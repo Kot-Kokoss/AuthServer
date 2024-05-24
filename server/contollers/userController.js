@@ -55,13 +55,25 @@ class UserController {
     return res.json({ token });
   }
 
-  async change(req, res, next) {
-    // const token = jwt.sign(
-    //   { id: req.user.id, email: req.user.email, role: req.user.role },
-    //   process.env.SECRET_KEY,
-    //   { expiresIn: '24h' },
-    // );
-    // return res.json({ token });
+  async reset(req, res, next) {
+    const { email, login, password } = req.body;
+
+    if (!email || !login || !password) {
+      return next(ApiError.badRequest('Необходимо указать email, login и новый пароль'));
+    }
+
+    const user = await User.findOne({ where: { email, login } });
+    if (!user) {
+      return next(ApiError.badRequest('Пользователь с указанным email и логином не найден'));
+    }
+    const hashedPassword = await bcrypt.hash(password, 5);
+    await User.update({ password: hashedPassword }, { where: { email, login } });
+    const token = jwt.sign(
+      { id: user.id, user: login, email: user.email, role: user.role },
+      process.env.SECRET_KEY,
+      { expiresIn: '24h' },
+    );
+    return res.json({ token });
   }
 }
 
